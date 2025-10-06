@@ -16,10 +16,10 @@ const Particles = () => {
   const mouseRef = useRef({ x: null, y: null });
 
   const options = useRef({
-    dotRadius: 2,
+    dotRadius: 4,
     speed: 0.4,
-    lineThreshold: 180, // dense connections (JVAI style)
-    dotColor: "#2B7FFF",
+    lineThreshold: 200, // dense connections (JVAI style)
+    dotColor: "rgba(0, 0, 139, 0.6)",
     lineColor: "#008BCF",
     background: "#000000",
   });
@@ -38,7 +38,7 @@ const Particles = () => {
     const initParticles = () => {
       const width = canvas.width;
       const height = canvas.height;
-      const count = Math.max((width * height) / 5000, 80); // dense
+      const count = Math.max((width * height) / 6000,130); // dense
       const arr = [];
       for (let i = 0; i < count; i++) {
         arr.push({
@@ -101,9 +101,9 @@ const Particles = () => {
           const dist = Math.hypot(dx, dy);
 
           if (dist < 100) { // only near particles
-            const force = (100 - dist) / 200; // stronger when closer
-            p.x -= (dx / dist) * force * 30; 
-            p.y -= (dy / dist) * force * 30;
+            const force = (100 - dist) / 350; // stronger when closer
+            p.x -= (dx / dist) * force * 50; 
+            p.y -= (dy / dist) * force * 50;
           }
         }
 
