@@ -16,7 +16,7 @@ const Particles = () => {
   const options = useRef({
     dotRadius: 2,
     speed: 0.25,
-    lineThreshold: 120,
+    lineThreshold: 80,
     reactive: true,
     dotColor: "#2B7FFF",
     lineColor: "#008BCF",

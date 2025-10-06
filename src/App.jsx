@@ -9,8 +9,8 @@ function App() {
   return (
     <div>
       <div className=""></div>
-     {/* <HeroSection/> */}
-     <Particles/>
+     <HeroSection/>
+     {/* <Particles/> */}
     </div>
   )
 }

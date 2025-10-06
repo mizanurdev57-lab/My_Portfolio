@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from "react";
-import { Pane } from "tweakpane";
 
 function hexToRgba(hex, alpha = 1) {
   hex = hex.replace(/^#/, "");
@@ -13,21 +12,23 @@ function hexToRgba(hex, alpha = 1) {
 
 const Particles = () => {
   const canvasRef = useRef(null);
+  const particlesRef = useRef([]);
+  const mouseRef = useRef({ x: null, y: null });
+
   const options = useRef({
     dotRadius: 2,
-    speed: 0.25,
-    lineThreshold: 80, // Reduced threshold for denser connections
-    reactive: true,
+    speed: 0.4,
+    lineThreshold: 180, // dense connections (JVAI style)
     dotColor: "#2B7FFF",
     lineColor: "#008BCF",
     background: "#000000",
   });
-  const particlesRef = useRef([]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
 
+    // resize
     const resize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
@@ -37,7 +38,7 @@ const Particles = () => {
     const initParticles = () => {
       const width = canvas.width;
       const height = canvas.height;
-      const count = Math.max((width * height) / 1500, 150); // Increased particle count for denser effect
+      const count = Math.max((width * height) / 5000, 80); // dense
       const arr = [];
       for (let i = 0; i < count; i++) {
         arr.push({
@@ -52,20 +53,11 @@ const Particles = () => {
       particlesRef.current = arr;
     };
 
-    const reactToMouse = (e) => {
-      if (!options.current.reactive) return;
+    // mouse move
+    const onMouseMove = (e) => {
       const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      particlesRef.current.forEach(p => {
-        const dx = mouseX - p.x;
-        const dy = mouseY - p.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist < 100) {
-          p.angle = Math.atan2(-dy, -dx) * (180 / Math.PI);
-          p.speed = 2;
-        }
-      });
+      mouseRef.current.x = e.clientX - rect.left;
+      mouseRef.current.y = e.clientY - rect.top;
     };
 
     const loop = () => {
@@ -75,12 +67,13 @@ const Particles = () => {
       ctx.fillStyle = options.current.dotColor;
 
       particlesRef.current.forEach(p => {
+        // connection lines
         p.connections = [];
         particlesRef.current.forEach(n => {
           if (n.id === p.id || p.connections.includes(n.id)) return;
           const dist = Math.hypot(p.x - n.x, p.y - n.y);
           if (dist < options.current.lineThreshold) {
-            const alpha = (1 - dist / options.current.lineThreshold) * 0.5; // Increased alpha for more visibility
+            const alpha = (1 - dist / options.current.lineThreshold) * 0.4;
             ctx.strokeStyle = hexToRgba(options.current.lineColor, alpha);
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -91,16 +84,30 @@ const Particles = () => {
           }
         });
 
+        // draw particle
         ctx.beginPath();
         ctx.arc(p.x, p.y, options.current.dotRadius, 0, 2 * Math.PI);
         ctx.fill();
 
+        // movement
         const rad = (p.angle * Math.PI) / 180;
         p.x += Math.cos(rad) * p.speed;
         p.y += Math.sin(rad) * p.speed;
 
-        if (p.speed > options.current.speed) p.speed -= p.speed * 0.02;
+        // hover effect (smoothly repel from cursor)
+        if (mouseRef.current.x !== null && mouseRef.current.y !== null) {
+          const dx = mouseRef.current.x - p.x;
+          const dy = mouseRef.current.y - p.y;
+          const dist = Math.hypot(dx, dy);
 
+          if (dist < 100) { // only near particles
+            const force = (100 - dist) / 200; // stronger when closer
+            p.x -= (dx / dist) * force * 30; 
+            p.y -= (dy / dist) * force * 30;
+          }
+        }
+
+        // bounce edges
         if (p.x < 0 || p.x > width) p.angle = 180 - p.angle;
         if (p.y < 0 || p.y > height) p.angle = -p.angle;
       });
@@ -110,54 +117,22 @@ const Particles = () => {
 
     resize();
     window.addEventListener("resize", resize);
-    window.addEventListener("mousemove", reactToMouse);
+    window.addEventListener("mousemove", onMouseMove);
 
     requestAnimationFrame(loop);
 
-    const pane = new Pane({ title: "Settings", expanded: false });
-    pane.addBinding(options.current, "speed", { min: 0.1, max: 5, step: 0.1 });
-    pane.addBinding(options.current, "reactive");
-    pane.addBinding(options.current, "dotColor");
-    pane.addBinding(options.current, "lineColor");
-    pane.addBinding(options.current, "dotRadius", { min: 1, max: 10, step: 1 });
-    pane.addBinding(options.current, "lineThreshold", { min: 20, max: 300, step: 10 });
-    pane.addBinding(options.current, "background").on("change", (ev) => {
-      document.body.style.backgroundColor = ev.value;
-    });
-
     return () => {
       window.removeEventListener("resize", resize);
-      window.removeEventListener("mousemove", reactToMouse);
-      pane.dispose();
+      window.removeEventListener("mousemove", onMouseMove);
     };
   }, []);
 
   return (
     <section
-      className="relative w-screen h-screen flex items-center justify-self-start text-white overflow-hidden"
-      style={{ backgroundColor: "#000" }}
+      className="relative w-screen h-screen overflow-hidden"
+      style={{ backgroundColor: options.current.background }}
     >
-      <canvas
-        ref={canvasRef}
-        className="absolute top-0 left-0 w-full h-full"
-      />
-      <div className="relative container mx-auto z-10 text-left px-6">
-        <h1 className="text-5xl md:text-7xl font-extrabold mb-4">
-          <span className="text-white">We're </span>
-          <span className="text-blue-500">JVAi</span>
-        </h1>
-        <p className="text-xl md:text-2xl font-medium mb-6">
-          Empowering Innovation with AI
-        </p>
-        <p className="max-w-2xl text-gray-300 mb-8">
-          Partner with us to design, build, and scale cutting-edge AI
-          solutions tailored to your business needs.
-        </p>
-        <button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-full shadow-lg transition-all duration-300">
-          Start a Project
-        </button>
-      </div>
-      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/80 pointer-events-none"></div>
+      <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full" />
     </section>
   );
 };
